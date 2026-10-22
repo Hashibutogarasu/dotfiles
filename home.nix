@@ -1,10 +1,13 @@
-{ ... }:
+{ pkgs, home-manager, ... }:
 
 let
   username = builtins.getEnv "USER";
   homeDirectory = builtins.getEnv "HOME";
 in
 {
+  nix.package = pkgs.nix;
+  nix.nixPath = [ "home-manager=${home-manager}" ];
+
   imports = [
     ./applications.nix
     ./cli.nix
