@@ -5,3 +5,6 @@
 - Do not print command exit codes.
 - Do not add unnecessary arguments or options. Use the command form exactly as the user specifies.
 - Do not hardcode environment-specific values such as user names or home directory paths.
+- Do not write to memory unless the user explicitly asks. Put persistent rules in ~/.config/home-manager/claude/CLAUDE.md instead.
+- Do not write redundant comments that merely restate what the code already says.
+- Write code comments in English.

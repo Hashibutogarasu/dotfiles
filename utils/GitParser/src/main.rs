@@ -1,9 +1,17 @@
+use clap::Parser;
 use serde::Deserialize;
 use std::{
     env, fs,
     path::{Path, PathBuf},
-    process::ExitCode,
 };
+
+#[derive(Parser)]
+#[command(version, about)]
+struct Cli {
+    json: PathBuf,
+    main_conf: PathBuf,
+    local_dir: PathBuf,
+}
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -260,17 +268,7 @@ fn run(
     Ok(())
 }
 
-fn main() -> ExitCode {
-    let args: Vec<String> = env::args().skip(1).collect();
-    let [json, main_conf, local_dir] = args.as_slice() else {
-        eprintln!("usage: GitParser <git.json> <local.conf> <local.d>");
-        return ExitCode::from(2);
-    };
-    match run(Path::new(json), Path::new(main_conf), Path::new(local_dir)) {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(e) => {
-            eprintln!("GitParser: {e}");
-            ExitCode::FAILURE
-        }
-    }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse();
+    run(&cli.json, &cli.main_conf, &cli.local_dir)
 }
