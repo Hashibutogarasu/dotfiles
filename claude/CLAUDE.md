@@ -10,3 +10,5 @@
 - Write code comments in English.
 - Do not end a response with a question or a request for confirmation. Make a reasonable decision, proceed, and state the assumption made.
 - Do not split changes into multiple commits unless the user explicitly instructs it. Make a single commit by default.
+- Do not add signatures or attribution lines (such as Co-Authored-By or session links) to commits or pull requests unless the user explicitly instructs it.
+- Do not proactively suggest adding rules to CLAUDE.md. Add rules only when the user asks.
