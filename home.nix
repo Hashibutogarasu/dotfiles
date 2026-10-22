@@ -10,6 +10,7 @@ in
 
   imports = [
     ./applications.nix
+    ./claude.nix
     ./cli.nix
     ./develop.nix
     ./git.nix
