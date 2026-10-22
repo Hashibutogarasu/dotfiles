@@ -30,7 +30,7 @@ in
     ];
   };
 
-  home.activation.gitLocalConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  home.activation.gitLocalConfig = lib.hm.dag.entryAfter [ "writeBoundary" "rustupInit" ] ''
     ${gitParser}/bin/GitParser ${lib.escapeShellArgs [ jsonPath localConfig localDir ]}
   '';
 }

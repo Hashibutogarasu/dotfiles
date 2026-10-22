@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   home.packages = with pkgs; [
@@ -10,4 +15,8 @@
     cmake
     fvm
   ];
+
+  home.activation.rustupInit = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ${pkgs.rustup}/bin/rustup default stable
+  '';
 }
