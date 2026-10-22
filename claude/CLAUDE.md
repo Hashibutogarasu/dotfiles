@@ -9,3 +9,4 @@
 - Do not write redundant comments that merely restate what the code already says.
 - Write code comments in English.
 - Do not end a response with a question or a request for confirmation. Make a reasonable decision, proceed, and state the assumption made.
+- Do not split changes into multiple commits unless the user explicitly instructs it. Make a single commit by default.
