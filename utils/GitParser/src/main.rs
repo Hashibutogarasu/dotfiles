@@ -16,7 +16,13 @@ struct Cli {
 fn load(json_path: &Path) -> Result<GitJson, Box<dyn std::error::Error>> {
     match fs::read_to_string(json_path) {
         Ok(text) => Ok(serde_json::from_str(&text)?),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(GitJson::default()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!(
+                "warning: {} not found, skipping signing configuration",
+                json_path.display()
+            );
+            Ok(GitJson::default())
+        }
         Err(e) => Err(e.into()),
     }
 }
