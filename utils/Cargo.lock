@@ -3,11 +3,18 @@
 version = 4
 
 [[package]]
+name = "GitConfig"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "GitParser"
 version = "0.1.0"
 dependencies = [
+ "GitConfig",
  "clap",
- "serde",
  "serde_json",
 ]
 

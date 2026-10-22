@@ -13,8 +13,9 @@ let
   gitParser = pkgs.rustPlatform.buildRustPackage {
     pname = "GitParser";
     version = "0.1.0";
-    src = ./utils/GitParser;
-    cargoLock.lockFile = ./utils/GitParser/Cargo.lock;
+    src = ./utils;
+    cargoLock.lockFile = ./utils/Cargo.lock;
+    cargoBuildFlags = [ "--package" "GitParser" ];
   };
 in
 {
