@@ -1,5 +1,9 @@
-{ config, pkgs, ... }:
+{ ... }:
 
+let
+  username = builtins.getEnv "USER";
+  homeDirectory = builtins.getEnv "HOME";
+in
 {
   imports = [
     ./applications.nix
@@ -9,9 +13,9 @@
     ./nvim
   ];
 
-  home.username = "crow";
-  home.homeDirectory = "/home/crow";
-  home.stateVersion = "26.05"; # Please read the comment before changing.
+  home.username = username;
+  home.homeDirectory = homeDirectory;
+  home.stateVersion = "26.05";
 
   home.packages = [
   ];
@@ -20,7 +24,6 @@
   };
 
   home.sessionVariables = {
-    # EDITOR = "emacs";
   };
 
   programs.home-manager.enable = true;
