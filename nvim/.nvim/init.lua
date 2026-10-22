@@ -7,7 +7,8 @@ vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 vim.opt.softtabstop = 2
 vim.opt.undofile = true
-vim.opt.clipboard = "unnamedplus"
+vim.opt.mouse = ""
+vim.opt.clipboard = ""
 
 vim.lsp.config("ts_ls", {
   cmd = { "typescript-language-server", "--stdio" },
