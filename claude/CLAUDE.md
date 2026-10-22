@@ -8,3 +8,4 @@
 - Do not write to memory unless the user explicitly asks. Put persistent rules in ~/.config/home-manager/claude/CLAUDE.md instead.
 - Do not write redundant comments that merely restate what the code already says.
 - Write code comments in English.
+- Do not end a response with a question or a request for confirmation. Make a reasonable decision, proceed, and state the assumption made.

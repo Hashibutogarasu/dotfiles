@@ -1,5 +1,5 @@
 use clap::Parser;
-use GitConfig::{GitJson, OP_SSH_SIGN};
+use GitConfig::{GitInput, OP_SSH_SIGN};
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -13,7 +13,7 @@ struct Cli {
     local_dir: PathBuf,
 }
 
-fn load(json_path: &Path) -> Result<GitJson, Box<dyn std::error::Error>> {
+fn load(json_path: &Path) -> Result<GitInput, Box<dyn std::error::Error>> {
     match fs::read_to_string(json_path) {
         Ok(text) => Ok(serde_json::from_str(&text)?),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -21,7 +21,7 @@ fn load(json_path: &Path) -> Result<GitJson, Box<dyn std::error::Error>> {
                 "warning: {} not found, skipping signing configuration",
                 json_path.display()
             );
-            Ok(GitJson::default())
+            Ok(GitInput::default())
         }
         Err(e) => Err(e.into()),
     }
@@ -42,8 +42,8 @@ fn run(
     local_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let home = env::var("HOME")?;
-    let json = load(json_path)?;
-    let rendered = GitConfig::render(&json, &home, local_dir, Path::new(OP_SSH_SIGN).exists());
+    let input = load(json_path)?;
+    let rendered = GitConfig::render(&input, &home, local_dir, Path::new(OP_SSH_SIGN).exists())?;
 
     if let Some(parent) = main_path.parent() {
         fs::create_dir_all(parent)?;

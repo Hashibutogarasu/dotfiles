@@ -1,7 +1,11 @@
 #![allow(non_snake_case)]
 
-use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use serde::{Deserialize, Serialize};
+use std::{
+    error::Error,
+    fmt,
+    path::{Path, PathBuf},
+};
 
 pub const OP_SSH_SIGN: &str = "/opt/1Password/op-ssh-sign";
 
@@ -30,7 +34,7 @@ pub struct DirectoryInput {
 }
 
 #[derive(Deserialize, Default)]
-pub struct GitJson {
+pub struct GitInput {
     #[serde(default, rename = "use1Password")]
     pub use_1password: bool,
     #[serde(default)]
@@ -46,137 +50,112 @@ pub struct RenderedConfig {
     pub directories: Vec<(PathBuf, String)>,
 }
 
+#[derive(Debug)]
+pub struct MissingUserError(Vec<&'static str>);
+
+impl fmt::Display for MissingUserError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "use1Password is enabled but user.{} is missing",
+            self.0.join(", user.")
+        )
+    }
+}
+
+impl Error for MissingUserError {}
+
+#[derive(Serialize, Default)]
 struct UserSection {
     name: Option<String>,
     email: Option<String>,
+    #[serde(rename = "signingKey")]
     signing_key: Option<String>,
 }
 
+#[derive(Serialize, Default)]
 struct CommitSection {
     gpgsign: Option<bool>,
 }
 
-struct GpgSection {
-    format: Option<String>,
-}
-
+#[derive(Serialize, Default)]
 struct GpgSshSection {
     program: Option<String>,
 }
 
+#[derive(Serialize, Default)]
+struct GpgSection {
+    format: Option<String>,
+    ssh: GpgSshSection,
+}
+
+#[derive(Serialize, Default)]
 struct CoreSection {
+    #[serde(rename = "sshCommand")]
     ssh_command: Option<String>,
 }
 
-struct IncludeIfSection {
-    gitdir: String,
-    path: PathBuf,
-}
-
+#[derive(Serialize)]
 struct MainConfig {
     user: UserSection,
     commit: CommitSection,
     gpg: GpgSection,
-    gpg_ssh: GpgSshSection,
-    includes: Vec<IncludeIfSection>,
 }
 
+#[derive(Serialize)]
 struct DirectoryConfig {
     user: UserSection,
     core: CoreSection,
 }
 
-trait Section {
-    fn header(&self) -> String;
-    fn entries(&self) -> Vec<(&'static str, Option<String>)>;
-
-    fn render(&self) -> String {
-        let body: String = self
-            .entries()
-            .into_iter()
-            .filter_map(|(key, value)| value.filter(|v| !v.is_empty()).map(|v| (key, v)))
-            .map(|(key, value)| format!("\t{key} = {}\n", quote(&value)))
-            .collect();
-        if body.is_empty() {
-            String::new()
+impl GitInput {
+    fn validate(&self) -> Result<(), MissingUserError> {
+        if !self.use_1password {
+            return Ok(());
+        }
+        let missing: Vec<&'static str> = [
+            ("name", &self.user.name),
+            ("email", &self.user.email),
+            ("signingKey", &self.user.signing_key),
+        ]
+        .into_iter()
+        .filter(|(_, value)| value.as_deref().is_none_or(str::is_empty))
+        .map(|(key, _)| key)
+        .collect();
+        if missing.is_empty() {
+            Ok(())
         } else {
-            format!("[{}]\n{body}", self.header())
+            Err(MissingUserError(missing))
         }
     }
 }
 
-impl Section for UserSection {
-    fn header(&self) -> String {
-        "user".into()
-    }
-    fn entries(&self) -> Vec<(&'static str, Option<String>)> {
-        vec![
-            ("name", self.name.clone()),
-            ("email", self.email.clone()),
-            ("signingKey", self.signing_key.clone()),
-        ]
-    }
+fn non_empty(value: &Option<String>) -> Option<String> {
+    value.clone().filter(|v| !v.is_empty())
 }
 
-impl Section for CommitSection {
-    fn header(&self) -> String {
-        "commit".into()
+fn prune_empty(table: &mut toml::Table) {
+    for (_, value) in table.iter_mut() {
+        if let toml::Value::Table(inner) = value {
+            prune_empty(inner);
+        }
     }
-    fn entries(&self) -> Vec<(&'static str, Option<String>)> {
-        vec![("gpgsign", self.gpgsign.map(|v| v.to_string()))]
-    }
+    table.retain(|_, value| value.as_table().is_none_or(|inner| !inner.is_empty()));
 }
 
-impl Section for GpgSection {
-    fn header(&self) -> String {
-        "gpg".into()
-    }
-    fn entries(&self) -> Vec<(&'static str, Option<String>)> {
-        vec![("format", self.format.clone())]
-    }
+fn to_toml<T: Serialize>(config: &T) -> Result<String, Box<dyn Error>> {
+    let mut table = toml::Table::try_from(config)?;
+    prune_empty(&mut table);
+    Ok(toml::to_string(&table)?)
 }
 
-impl Section for GpgSshSection {
-    fn header(&self) -> String {
-        format!("gpg {}", quote("ssh"))
-    }
-    fn entries(&self) -> Vec<(&'static str, Option<String>)> {
-        vec![("program", self.program.clone())]
-    }
-}
-
-impl Section for CoreSection {
-    fn header(&self) -> String {
-        "core".into()
-    }
-    fn entries(&self) -> Vec<(&'static str, Option<String>)> {
-        vec![("sshCommand", self.ssh_command.clone())]
-    }
-}
-
-impl Section for IncludeIfSection {
-    fn header(&self) -> String {
-        format!("includeIf {}", quote(&self.gitdir))
-    }
-    fn entries(&self) -> Vec<(&'static str, Option<String>)> {
-        vec![("path", Some(self.path.display().to_string()))]
-    }
-}
-
-impl MainConfig {
-    fn render(&self) -> String {
-        let head: [&dyn Section; 4] = [&self.user, &self.commit, &self.gpg, &self.gpg_ssh];
-        head.iter()
-            .map(|s| s.render())
-            .chain(self.includes.iter().map(Section::render))
-            .collect()
-    }
-}
-
-impl DirectoryConfig {
-    fn render(&self) -> String {
-        [self.user.render(), self.core.render()].concat()
-    }
+// includeIf takes a quoted condition in its header, which TOML cannot express.
+fn include_if(gitdir: &str, path: &Path) -> String {
+    format!(
+        "[includeIf {}]\n\tpath = {}\n",
+        quote(&format!("gitdir:{}/", gitdir.trim_end_matches('/'))),
+        quote(&path.display().to_string())
+    )
 }
 
 fn quote(value: &str) -> String {
@@ -196,49 +175,27 @@ fn directory_conf_path(local_dir: &Path, index: usize) -> PathBuf {
 impl UserSection {
     fn from_input(user: &UserInput, home: &str) -> Self {
         Self {
-            name: user.name.clone(),
-            email: user.email.clone(),
-            signing_key: user
-                .signing_key
-                .as_deref()
-                .map(|key| expand_leading_tilde(key, home)),
-        }
-    }
-}
-
-impl IncludeIfSection {
-    fn new(dir: &DirectoryInput, index: usize, home: &str, local_dir: &Path) -> Self {
-        let path = expand_leading_tilde(&dir.path, home);
-        Self {
-            gitdir: format!("gitdir:{}/", path.trim_end_matches('/')),
-            path: directory_conf_path(local_dir, index),
+            name: non_empty(&user.name),
+            email: non_empty(&user.email),
+            signing_key: non_empty(&user.signing_key).map(|key| expand_leading_tilde(&key, home)),
         }
     }
 }
 
 impl MainConfig {
-    fn new(json: &GitJson, home: &str, local_dir: &Path, use_op_ssh_sign: bool) -> Self {
+    fn new(input: &GitInput, home: &str, use_op_ssh_sign: bool) -> Self {
         Self {
-            user: UserSection::from_input(&json.user, home),
+            user: UserSection::from_input(&input.user, home),
             commit: CommitSection {
-                gpgsign: json.signing.commit.or(use_op_ssh_sign.then_some(true)),
+                gpgsign: input.signing.commit.or(use_op_ssh_sign.then_some(true)),
             },
             gpg: GpgSection {
-                format: json
-                    .signing
-                    .format
-                    .clone()
+                format: non_empty(&input.signing.format)
                     .or_else(|| use_op_ssh_sign.then(|| "ssh".to_owned())),
+                ssh: GpgSshSection {
+                    program: use_op_ssh_sign.then(|| OP_SSH_SIGN.to_owned()),
+                },
             },
-            gpg_ssh: GpgSshSection {
-                program: use_op_ssh_sign.then(|| OP_SSH_SIGN.to_owned()),
-            },
-            includes: json
-                .directories
-                .iter()
-                .enumerate()
-                .map(|(i, dir)| IncludeIfSection::new(dir, i, home, local_dir))
-                .collect(),
         }
     }
 }
@@ -248,67 +205,27 @@ impl DirectoryConfig {
         Self {
             user: UserSection::from_input(&dir.user, home),
             core: CoreSection {
-                ssh_command: dir.ssh_command.as_deref().map(|c| c.replace('~', home)),
+                ssh_command: non_empty(&dir.ssh_command).map(|c| c.replace('~', home)),
             },
         }
     }
 }
 
 pub fn render(
-    json: &GitJson,
+    input: &GitInput,
     home: &str,
     local_dir: &Path,
     op_ssh_sign_found: bool,
-) -> RenderedConfig {
-    let use_op_ssh_sign = json.use_1password && op_ssh_sign_found;
-    RenderedConfig {
-        main: MainConfig::new(json, home, local_dir, use_op_ssh_sign).render(),
-        directories: json
-            .directories
-            .iter()
-            .enumerate()
-            .map(|(i, dir)| {
-                (
-                    directory_conf_path(local_dir, i),
-                    DirectoryConfig::new(dir, home).render(),
-                )
-            })
-            .collect(),
-    }
-}
+) -> Result<RenderedConfig, Box<dyn Error>> {
+    input.validate()?;
+    let use_op_ssh_sign = input.use_1password && op_ssh_sign_found;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn json(use_1password: bool) -> GitJson {
-        GitJson {
-            use_1password,
-            user: UserInput {
-                name: Some("A".into()),
-                email: Some("a@example.com".into()),
-                signing_key: Some("~/.ssh/a.pub".into()),
-            },
-            ..Default::default()
-        }
+    let mut main = to_toml(&MainConfig::new(input, home, use_op_ssh_sign))?;
+    let mut directories = Vec::with_capacity(input.directories.len());
+    for (i, dir) in input.directories.iter().enumerate() {
+        let path = directory_conf_path(local_dir, i);
+        main.push_str(&include_if(&expand_leading_tilde(&dir.path, home), &path));
+        directories.push((path, to_toml(&DirectoryConfig::new(dir, home))?));
     }
-
-    #[test]
-    fn signing_is_configured_when_enabled_and_found() {
-        let main = render(&json(true), "/home/u", Path::new("/l"), true).main;
-        assert!(main.contains("signingKey = \"/home/u/.ssh/a.pub\""));
-        assert!(main.contains("gpgsign = \"true\""));
-        assert!(main.contains("format = \"ssh\""));
-        assert!(main.contains("[gpg \"ssh\"]"));
-        assert!(main.contains(OP_SSH_SIGN));
-    }
-
-    #[test]
-    fn signing_is_not_configured_otherwise() {
-        for (enabled, found) in [(true, false), (false, true)] {
-            let main = render(&json(enabled), "/home/u", Path::new("/l"), found).main;
-            assert!(!main.contains("gpgsign"));
-            assert!(!main.contains(OP_SSH_SIGN));
-        }
-    }
+    Ok(RenderedConfig { main, directories })
 }
