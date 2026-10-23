@@ -1,5 +1,5 @@
 use clap::Parser;
-use GitConfig::{GitInput, OP_SSH_SIGN};
+use GitConfig::GitInput;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -11,6 +11,7 @@ struct Cli {
     json: PathBuf,
     main_conf: PathBuf,
     local_dir: PathBuf,
+    op_ssh_sign: String,
 }
 
 fn load(json_path: &Path) -> Result<GitInput, Box<dyn std::error::Error>> {
@@ -40,10 +41,11 @@ fn run(
     json_path: &Path,
     main_path: &Path,
     local_dir: &Path,
+    op_ssh_sign: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let home = env::var("HOME")?;
     let input = load(json_path)?;
-    let rendered = GitConfig::render(&input, &home, local_dir, Path::new(OP_SSH_SIGN).exists())?;
+    let rendered = GitConfig::render(&input, &home, local_dir, op_ssh_sign)?;
 
     if let Some(parent) = main_path.parent() {
         fs::create_dir_all(parent)?;
@@ -59,5 +61,5 @@ fn run(
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    run(&cli.json, &cli.main_conf, &cli.local_dir)
+    run(&cli.json, &cli.main_conf, &cli.local_dir, &cli.op_ssh_sign)
 }

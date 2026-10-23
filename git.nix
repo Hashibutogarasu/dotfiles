@@ -10,6 +10,7 @@ let
   jsonPath = "${home}/.config/home-manager/config/git.json";
   localConfig = "${home}/.config/git/local.conf";
   localDir = "${home}/.config/git/local.d";
+  opSshSign = "${config.home.profileDirectory}/bin/op-ssh-sign";
   gitParser = pkgs.rustPlatform.buildRustPackage {
     pname = "GitParser";
     version = "0.1.0";
@@ -22,7 +23,7 @@ in
   programs.git = {
     enable = true;
 
-    settings.gpg.ssh.program = lib.mkDefault "${config.home.profileDirectory}/bin/op-ssh-sign";
+    settings.gpg.ssh.program = lib.mkDefault opSshSign;
 
     includes = [
       {
@@ -32,6 +33,6 @@ in
   };
 
   home.activation.gitLocalConfig = lib.hm.dag.entryAfter [ "writeBoundary" "rustupInit" ] ''
-    ${gitParser}/bin/GitParser ${lib.escapeShellArgs [ jsonPath localConfig localDir ]}
+    ${gitParser}/bin/GitParser ${lib.escapeShellArgs [ jsonPath localConfig localDir opSshSign ]}
   '';
 }

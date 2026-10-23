@@ -7,8 +7,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const OP_SSH_SIGN: &str = "/opt/1Password/op-ssh-sign";
-
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UserInput {
@@ -183,7 +181,7 @@ impl UserSection {
 }
 
 impl MainConfig {
-    fn new(input: &GitInput, home: &str, use_op_ssh_sign: bool) -> Self {
+    fn new(input: &GitInput, home: &str, op_ssh_sign: &str, use_op_ssh_sign: bool) -> Self {
         Self {
             user: UserSection::from_input(&input.user, home),
             commit: CommitSection {
@@ -193,7 +191,7 @@ impl MainConfig {
                 format: non_empty(&input.signing.format)
                     .or_else(|| use_op_ssh_sign.then(|| "ssh".to_owned())),
                 ssh: GpgSshSection {
-                    program: use_op_ssh_sign.then(|| OP_SSH_SIGN.to_owned()),
+                    program: use_op_ssh_sign.then(|| op_ssh_sign.to_owned()),
                 },
             },
         }
@@ -215,12 +213,12 @@ pub fn render(
     input: &GitInput,
     home: &str,
     local_dir: &Path,
-    op_ssh_sign_found: bool,
+    op_ssh_sign: &str,
 ) -> Result<RenderedConfig, Box<dyn Error>> {
     input.validate()?;
-    let use_op_ssh_sign = input.use_1password && op_ssh_sign_found;
+    let use_op_ssh_sign = input.use_1password;
 
-    let mut main = to_toml(&MainConfig::new(input, home, use_op_ssh_sign))?;
+    let mut main = to_toml(&MainConfig::new(input, home, op_ssh_sign, use_op_ssh_sign))?;
     let mut directories = Vec::with_capacity(input.directories.len());
     for (i, dir) in input.directories.iter().enumerate() {
         let path = directory_conf_path(local_dir, i);
