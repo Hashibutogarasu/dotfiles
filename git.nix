@@ -22,7 +22,7 @@ in
   programs.git = {
     enable = true;
 
-    settings.gpg.ssh.program = lib.mkDefault "${pkgs._1password-gui}/bin/op-ssh-sign";
+    settings.gpg.ssh.program = lib.mkDefault "${config.home.profileDirectory}/bin/op-ssh-sign";
 
     includes = [
       {
