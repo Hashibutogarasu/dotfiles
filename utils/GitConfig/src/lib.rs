@@ -46,6 +46,7 @@ pub struct GitInput {
 pub struct RenderedConfig {
     pub main: String,
     pub directories: Vec<(PathBuf, String)>,
+    pub ssh: String,
 }
 
 #[derive(Debug)]
@@ -166,6 +167,26 @@ fn expand_leading_tilde(value: &str, home: &str) -> String {
         .map_or_else(|| value.to_owned(), |rest| format!("{home}{rest}"))
 }
 
+fn ssh_match_block(gitdir: &str, ssh_command: &str) -> String {
+    let mut options = Vec::new();
+    let mut tokens = ssh_command.split_whitespace().skip(1);
+    while let Some(token) = tokens.next() {
+        match (token, tokens.next()) {
+            ("-i", Some(file)) => options.push(format!("IdentityFile {file}")),
+            ("-o", Some(opt)) => options.push(opt.replacen('=', " ", 1)),
+            _ => {}
+        }
+    }
+    let dir = gitdir.trim_end_matches('/');
+    let mut block = format!(
+        "Match host github.com exec \"case \\\"$PWD/\\\" in {dir}/*) exit 0;; *) exit 1;; esac\"\n"
+    );
+    for option in options {
+        block.push_str(&format!("\t{option}\n"));
+    }
+    block
+}
+
 fn directory_conf_path(local_dir: &Path, index: usize) -> PathBuf {
     local_dir.join(format!("{index}.conf"))
 }
@@ -220,10 +241,15 @@ pub fn render(
 
     let mut main = to_toml(&MainConfig::new(input, home, op_ssh_sign, use_op_ssh_sign))?;
     let mut directories = Vec::with_capacity(input.directories.len());
+    let mut ssh = String::new();
     for (i, dir) in input.directories.iter().enumerate() {
         let path = directory_conf_path(local_dir, i);
-        main.push_str(&include_if(&expand_leading_tilde(&dir.path, home), &path));
+        let gitdir = expand_leading_tilde(&dir.path, home);
+        main.push_str(&include_if(&gitdir, &path));
         directories.push((path, to_toml(&DirectoryConfig::new(dir, home))?));
+        if let Some(command) = non_empty(&dir.ssh_command) {
+            ssh.push_str(&ssh_match_block(&gitdir, &command.replace('~', home)));
+        }
     }
-    Ok(RenderedConfig { main, directories })
+    Ok(RenderedConfig { main, directories, ssh })
 }

@@ -12,6 +12,7 @@ struct Cli {
     main_conf: PathBuf,
     local_dir: PathBuf,
     op_ssh_sign: String,
+    ssh_conf: PathBuf,
 }
 
 fn load(json_path: &Path) -> Result<GitInput, Box<dyn std::error::Error>> {
@@ -42,6 +43,7 @@ fn run(
     main_path: &Path,
     local_dir: &Path,
     op_ssh_sign: &str,
+    ssh_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let home = env::var("HOME")?;
     let input = load(json_path)?;
@@ -56,10 +58,17 @@ fn run(
         fs::write(path, content)?;
     }
     fs::write(main_path, rendered.main)?;
+    fs::write(ssh_path, rendered.ssh)?;
     Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    run(&cli.json, &cli.main_conf, &cli.local_dir, &cli.op_ssh_sign)
+    run(
+        &cli.json,
+        &cli.main_conf,
+        &cli.local_dir,
+        &cli.op_ssh_sign,
+        &cli.ssh_conf,
+    )
 }
