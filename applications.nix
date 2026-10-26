@@ -3,6 +3,7 @@
 {
   home.packages = with pkgs; [
     zed-editor
+    (callPackage ./gamemaker.nix { })
     android-studio
     vlc
     piper
