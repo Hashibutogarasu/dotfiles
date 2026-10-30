@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, users, ... }:
 
 {
   services.openssh = {
@@ -13,7 +13,7 @@
       KbdInteractiveAuthentication = false;
       AuthenticationMethods = "publickey";
       PermitRootLogin = "no";
-      AllowUsers = [ "crow" ];
+      AllowUsers = [ users.crow.name ];
       MaxAuthTries = 3;
       PerSourcePenalties = "crash:3600s authfail:3600s max:86400s";
     };

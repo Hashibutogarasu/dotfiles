@@ -1,8 +1,8 @@
-{ ... }:
+{ users, ... }:
 
 {
-  home.username = "crow";
-  home.homeDirectory = "/home/crow";
+  home.username = users.crow.name;
+  home.homeDirectory = users.crow.homeDirectory;
   home.stateVersion = "26.05";
 
   imports = [

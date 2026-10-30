@@ -1,5 +1,5 @@
 {
-  description = "NixOS and Home Manager configuration of crow";
+  description = "NixOS and Home Manager configuration";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -13,6 +13,14 @@
     { nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
+
+      users = {
+        crow = {
+          name = "crow";
+          description = "crow";
+          homeDirectory = "/home/crow";
+        };
+      };
     in
     {
       packages.${system}.ssh-utils =
@@ -20,6 +28,7 @@
 
       nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
         inherit system;
+        specialArgs = { inherit users; };
         modules = [
           ./hosts/nixos
           home-manager.nixosModules.home-manager
@@ -28,15 +37,16 @@
               useGlobalPkgs = true;
               useUserPackages = true;
               backupFileExtension = "backup";
-              users.crow = import ./home;
+              extraSpecialArgs = { inherit users; };
+              users.${users.crow.name} = import ./home;
             };
           }
         ];
       };
 
-      homeConfigurations."crow" = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations.${users.crow.name} = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.${system};
-        extraSpecialArgs = { inherit home-manager; };
+        extraSpecialArgs = { inherit home-manager users; };
         modules = [
           ./home
           ./home/standalone.nix
