@@ -1,44 +1,88 @@
 guide:
-  title: "SSH クライアント設定ガイド (Cloudflare Tunnel / cloudflared)"
-  intro: |-
+  body: |
+    SSH クライアント設定ガイド (Cloudflare Tunnel / cloudflared)
+    ==========================================================
+
     このガイドでは、ssh-utils が鍵ペアを生成した後にあなた自身が
     行う手順を説明します。ssh-utils は鍵の生成と配置のみを行い、
     ~/.ssh/config などのクライアント設定は編集しません。
     手順 4 の設定ブロックは手作業で追加してください。
-  step1_heading: "1. 前提条件"
-  step1_install: "このマシンに cloudflared をインストールします:"
-  step1_confirm: |-
+
+    1. 前提条件
+    ------------------------
+    このマシンに cloudflared をインストールします:
+      https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
     接続先のトンネル側ホスト名 (例: %{host} に一致するホスト) が
     Cloudflare Zero Trust で Cloudflare Tunnel の SSH アプリケーション /
     公開ホスト名として公開され、あなたの ID が Access ポリシーで
     許可されていることを確認してください。
-  step2_heading: "2. 鍵を生成する"
-  step2_run: "実行:"
-  step2_creates: "これにより、次が作成されます:"
-  step2_private_note: "(パーミッション 600、ディレクトリは 700)"
-  step2_public_note: "(パーミッション 644)"
-  step2_note: |-
+
+    2. 鍵を生成する
+    ------------------------
+    実行:
+
+      ssh-utils generate --output-dir %{output_dir}
+
+    これにより、次が作成されます:
+
+      %{private_key}  (パーミッション 600、ディレクトリは 700)
+      %{public_key}   (パーミッション 644)
+
     %{private_key} は秘密鍵です。秘密に保持し、サーバーへコピーしては
     いけません。%{public_key} は次の手順で登録する公開鍵です。
     generate を再実行した場合、既存ファイルの上書きは --force を
     指定しない限り拒否されます。
-  step3_heading: "3. サーバーに公開鍵を登録する"
-  step3_intro: "~/.ssh/authorized_keys に %{name}.pub を追加します。ssh-copy-id を使う場合:"
-  step3_or_manually: "このマシンから手動で行う場合:"
-  step3_note: |-
+
+    3. サーバーに公開鍵を登録する
+    ------------------------
+    ~/.ssh/authorized_keys に %{name}.pub を追加します。ssh-copy-id を使う場合:
+
+      ssh-copy-id -i %{public_key} user@host
+
+    このマシンから手動で行う場合:
+
+      cat %{public_key} | ssh user@host "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+      ssh user@host "chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
+
     鍵を登録するマシンに適用されるユーザーとホストを使用してください。
-  step4_heading: "4. クライアント設定を手で書く"
-  step4_intro: "~/.ssh/config を自分で作成または編集し、次のブロックを追加します:"
-  step4_note: |-
+
+    4. クライアント設定を手で書く
+    ------------------------
+    ~/.ssh/config を自分で作成または編集し、次のブロックを追加します:
+
+    %{block}
+
     Host パターン、IdentityFile のパス、ユーザーがここに表示されたものと
     異なる場合は、自分の値に置き換えてください。ファイルの
     パーミッションは制限的にしてください:
-  step5_heading: "5. 接続と確認"
-  step5_connect: "次で接続します:"
-  step5_connect_note: "<host> は %{host} に一致するもの (例: 公開されたトンネルのホスト名) です。デバッグには詳細出力を利用します:"
-  step5_fingerprint: "生成された公開鍵のフィンガープリントは次で確認します:"
-  step5_fingerprint_note: "鍵生成時に ssh-utils が表示したフィンガープリントと比較してください。"
-  step6_heading: "6. トラブルシューティング"
-  step6_permission_intro: "ssh のパーミッションエラー (鍵が無視される、または「permissions are too open」) の場合は、秘密鍵のパーミッションを修正します:"
-  step6_access: "接続時にブラウザウィンドウや `cloudflared access login` のプロンプトが表示されるのは想定内です: Cloudflare Access が SSH セッション開始前にブラウザで認証します。Access ポリシーで許可された ID でログインを完了してください。"
-  step6_proxy: "「ProxyCommand: cloudflared: No such file or directory」または「executable file not found」の場合: cloudflared がインストールされていないか、PATH に含まれていません。手順 1 のリンクから再インストールし、PATH が更新されるよう新しいシェルを開いてください。"
+
+      chmod 700 ~/.ssh
+      chmod 600 ~/.ssh/config
+
+    5. 接続と確認
+    ------------------------
+    次で接続します:
+
+      ssh <host>
+
+    <host> は %{host} に一致するもの (例: 公開されたトンネルのホスト名) です。デバッグには詳細出力を利用します:
+
+      ssh -v <host>
+
+    生成された公開鍵のフィンガープリントは次で確認します:
+
+      ssh-keygen -lf %{public_key}
+
+    鍵生成時に ssh-utils が表示したフィンガープリントと比較してください。
+
+    6. トラブルシューティング
+    ------------------------
+    ssh のパーミッションエラー (鍵が無視される、または「permissions are too open」) の場合は、秘密鍵のパーミッションを修正します:
+
+      chmod 700 %{output_dir}
+      chmod 600 %{private_key}
+
+    接続時にブラウザウィンドウや `cloudflared access login` のプロンプトが表示されるのは想定内です: Cloudflare Access が SSH セッション開始前にブラウザで認証します。Access ポリシーで許可された ID でログインを完了してください。
+
+    「ProxyCommand: cloudflared: No such file or directory」または「executable file not found」の場合: cloudflared がインストールされていないか、PATH に含まれていません。手順 1 のリンクから再インストールし、PATH が更新されるよう新しいシェルを開いてください。
