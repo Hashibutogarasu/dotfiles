@@ -32,7 +32,7 @@
 
       nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit users; };
+        specialArgs = { inherit users nixvim; };
         modules = [
           ./hosts/nixos
           home-manager.nixosModules.home-manager
