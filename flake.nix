@@ -15,6 +15,9 @@
       system = "x86_64-linux";
     in
     {
+      packages.${system}.ssh-utils =
+        nixpkgs.legacyPackages.${system}.callPackage ./ssh/utils/package.nix { };
+
       nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [

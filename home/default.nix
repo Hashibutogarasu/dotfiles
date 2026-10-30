@@ -12,6 +12,7 @@
     ./develop.nix
     ./git
     ./nvim
+    ./ssh.nix
   ];
 
   programs.home-manager.enable = true;
