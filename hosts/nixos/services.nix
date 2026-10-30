@@ -1,14 +1,19 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, users, ... }:
 
 {
   services.openssh = {
     enable = true;
     openFirewall = true;
+    authorizedKeysFiles = [
+      ".ssh/authorized_keys"
+      ".ssh/generated/system_key.pub"
+    ];
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
+      AuthenticationMethods = "publickey";
       PermitRootLogin = "no";
-      AllowUsers = [ "crow" ];
+      AllowUsers = [ users.crow.name ];
       MaxAuthTries = 3;
       PerSourcePenalties = "crash:3600s authfail:3600s max:86400s";
     };
@@ -30,6 +35,7 @@
   environment.systemPackages = [
     pkgs.pkg-config
     pkgs.flatpak
+    pkgs.cloudflared
   ];
   environment.variables.PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
   services.flatpak.enable = true;

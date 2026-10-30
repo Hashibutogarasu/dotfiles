@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, users, ... }:
 
 {
   nixpkgs.config.allowUnfree = true;
@@ -24,9 +24,9 @@
     LC_TIME = "ja_JP.UTF-8";
   };
 
-  users.users.crow = {
+  users.users.${users.crow.name} = {
     isNormalUser = true;
-    description = "crow";
+    description = users.crow.description;
     extraGroups = [ "networkmanager" "wheel" ];
   };
 
