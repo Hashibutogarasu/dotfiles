@@ -7,12 +7,12 @@
 
 let
   home = config.home.homeDirectory;
-  jsonPath = "${home}/.config/home-manager/config/git.json";
+  jsonPath = "${home}/.config/git/git.json";
   localConfig = "${home}/.config/git/local.conf";
   localDir = "${home}/.config/git/local.d";
   sshConfig = "${home}/.config/git/ssh.conf";
   userSshConfig = "${home}/.ssh/config";
-  opSshSign ="${config.home.profileDirectory}/bin/op-ssh-sign";
+  opSshSign = "${config.home.profileDirectory}/bin/op-ssh-sign";
   gitParser = pkgs.rustPlatform.buildRustPackage {
     pname = "GitParser";
     version = "0.1.0";
@@ -22,6 +22,8 @@ let
   };
 in
 {
+  home.packages = [ pkgs._1password-cli ];
+
   programs.git = {
     enable = true;
 

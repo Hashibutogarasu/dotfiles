@@ -1,7 +1,5 @@
 {
-  description = "Home Manager configuration";
-
-  nixConfig.pure-eval = false;
+  description = "NixOS and Home Manager configuration of crow";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -15,17 +13,32 @@
     { nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
-      username = builtins.getEnv "USER";
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
     in
     {
-      homeConfigurations.${username} = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
+      nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          ./hosts/nixos
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              backupFileExtension = "backup";
+              users.crow = import ./home;
+            };
+          }
+        ];
+      };
+
+      homeConfigurations."crow" = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.${system};
         extraSpecialArgs = { inherit home-manager; };
-        modules = [ ./home.nix ];
+        modules = [
+          ./home
+          ./home/standalone.nix
+          { nixpkgs.config.allowUnfree = true; }
+        ];
       };
     };
 }

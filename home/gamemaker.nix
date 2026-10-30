@@ -147,6 +147,7 @@ pkgs.buildFHSEnv {
         pkgs.brotli
       ]
     }:$LD_LIBRARY_PATH
+    export PULSE_PROP="state.restore-props=false"
   '';
 
   runScript = "${unpacked}/opt/GameMaker";

@@ -17,7 +17,9 @@ struct Cli {
 
 fn load(json_path: &Path) -> Result<GitInput, Box<dyn std::error::Error>> {
     match fs::read_to_string(json_path) {
-        Ok(text) => Ok(serde_json::from_str(&text)?),
+        Ok(text) => serde_json::from_str(&text).map_err(|e| {
+            format!("failed to parse {}: {e}", json_path.display()).into()
+        }),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             eprintln!(
                 "warning: {} not found, skipping signing configuration",
@@ -54,6 +56,9 @@ fn run(
     }
     clear_local_dir(local_dir)?;
 
+    for gh_dir in &rendered.gh_dirs {
+        fs::create_dir_all(gh_dir)?;
+    }
     for (path, content) in &rendered.directories {
         fs::write(path, content)?;
     }

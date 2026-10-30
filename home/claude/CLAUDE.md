@@ -13,4 +13,5 @@
 - Do not add signatures or attribution lines (such as Co-Authored-By or session links) to commits or pull requests unless the user explicitly instructs it.
 - Do not proactively suggest adding rules to CLAUDE.md. Add rules only when the user asks.
 - Report only what was done. Do not volunteer what was not done (such as not committed or not pushed) or what the user needs to do next (such as running a command to apply the change).
+- Report only what was changed. Do not mention whether the change was launched, run, compiled, or otherwise verified.
 - Do not include personal names, account names, or usernames from the user's configuration in suggestions or recommendations. Refer to them generically (e.g., "the other account").

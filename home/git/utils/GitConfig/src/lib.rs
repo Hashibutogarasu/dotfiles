@@ -13,6 +13,8 @@ pub struct UserInput {
     pub name: Option<String>,
     pub email: Option<String>,
     pub signing_key: Option<String>,
+    #[serde(default)]
+    pub use_gh: bool,
 }
 
 #[derive(Deserialize, Default)]
@@ -29,12 +31,16 @@ pub struct DirectoryInput {
     #[serde(default)]
     pub user: UserInput,
     pub ssh_command: Option<String>,
+    #[serde(default)]
+    pub use_gh: bool,
 }
 
 #[derive(Deserialize, Default)]
 pub struct GitInput {
     #[serde(default, rename = "use1Password")]
     pub use_1password: bool,
+    #[serde(default, rename = "useGh")]
+    pub use_gh: bool,
     #[serde(default)]
     pub user: UserInput,
     #[serde(default)]
@@ -47,6 +53,7 @@ pub struct RenderedConfig {
     pub main: String,
     pub directories: Vec<(PathBuf, String)>,
     pub ssh: String,
+    pub gh_dirs: Vec<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -161,6 +168,26 @@ fn quote(value: &str) -> String {
     format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn gh_credential_helper(gh_config_dir: Option<&Path>, reset: bool) -> String {
+    let command = match gh_config_dir {
+        Some(dir) => format!(
+            "!GH_CONFIG_DIR={} gh auth git-credential",
+            shell_quote(&dir.display().to_string())
+        ),
+        None => "!gh auth git-credential".to_owned(),
+    };
+    let mut section = String::from("[credential \"https://github.com\"]\n");
+    if reset {
+        section.push_str("\thelper =\n");
+    }
+    section.push_str(&format!("\thelper = {}\n", quote(&command)));
+    section
+}
+
 fn expand_leading_tilde(value: &str, home: &str) -> String {
     value
         .strip_prefix('~')
@@ -240,16 +267,26 @@ pub fn render(
     let use_op_ssh_sign = input.use_1password;
 
     let mut main = to_toml(&MainConfig::new(input, home, op_ssh_sign, use_op_ssh_sign))?;
+    if input.use_gh || input.user.use_gh {
+        main.push_str(&gh_credential_helper(None, false));
+    }
     let mut directories = Vec::with_capacity(input.directories.len());
     let mut ssh = String::new();
+    let mut gh_dirs = Vec::new();
     for (i, dir) in input.directories.iter().enumerate() {
         let path = directory_conf_path(local_dir, i);
         let gitdir = expand_leading_tilde(&dir.path, home);
         main.push_str(&include_if(&gitdir, &path));
-        directories.push((path, to_toml(&DirectoryConfig::new(dir, home))?));
+        let mut content = to_toml(&DirectoryConfig::new(dir, home))?;
+        if dir.use_gh || dir.user.use_gh {
+            let gh_dir = Path::new(&gitdir).join(".gh");
+            content.push_str(&gh_credential_helper(Some(&gh_dir), true));
+            gh_dirs.push(gh_dir);
+        }
+        directories.push((path, content));
         if let Some(command) = non_empty(&dir.ssh_command) {
             ssh.push_str(&ssh_match_block(&gitdir, &command.replace('~', home)));
         }
     }
-    Ok(RenderedConfig { main, directories, ssh })
+    Ok(RenderedConfig { main, directories, ssh, gh_dirs })
 }
