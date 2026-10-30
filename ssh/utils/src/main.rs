@@ -61,7 +61,10 @@ fn run() -> Result<()> {
                 host: args.host.clone(),
                 user: args.user.clone(),
             };
-            println!("{}", guide::render_guide(&options));
+            output::page(&guide::render_guide(&options))
+        }
+        Commands::Completions(args) => {
+            cli::print_completions(args.shell);
             Ok(())
         }
     }

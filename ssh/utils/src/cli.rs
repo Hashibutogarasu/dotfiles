@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -20,6 +21,19 @@ pub enum Commands {
     Generate(GenerateArgs),
     #[command(about = "Print the Cloudflared SSH client setup guide")]
     Guide(GuideArgs),
+    #[command(about = "Generate shell completion scripts")]
+    Completions(CompletionsArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct CompletionsArgs {
+    #[arg(value_enum)]
+    pub shell: Shell,
+}
+
+pub fn print_completions(shell: Shell) {
+    let mut cmd = Cli::command();
+    clap_complete::generate(shell, &mut cmd, "ssh-utils", &mut std::io::stdout());
 }
 
 #[derive(Args, Debug)]
@@ -63,7 +77,7 @@ pub struct GuideArgs {
     pub name: String,
     #[arg(
         long,
-        default_value = "*.karasu256.com",
+        default_value = "*.example.com",
         help = "Host pattern used in the printed ~/.ssh/config block"
     )]
     pub host: String,

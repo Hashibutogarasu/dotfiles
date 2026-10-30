@@ -10,8 +10,10 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 console = "0.15"
 dirs = "5"
 indicatif = "0.17"
+minus = { version = "5", features = ["static_output"] }
 rust-i18n = "3"
 ssh-key = { version = "0.6", features = ["ed25519", "std", "alloc", "getrandom"] }

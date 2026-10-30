@@ -1,6 +1,15 @@
+use anyhow::Result;
 use console::{style, Term};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::Duration;
+
+pub fn page(text: &str) -> Result<()> {
+    let mut pager = minus::Pager::new();
+    pager.set_text(text)?;
+    pager.set_prompt("ssh-utils guide")?;
+    minus::page_all(pager)?;
+    Ok(())
+}
 
 pub fn success(message: &str) {
     let term = Term::stdout();
