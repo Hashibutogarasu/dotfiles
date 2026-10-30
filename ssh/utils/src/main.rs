@@ -1,6 +1,9 @@
+rust_i18n::i18n!("locales", fallback = "en");
+
 mod cli;
 mod guide;
 mod keys;
+mod locale;
 mod output;
 
 use anyhow::Result;
@@ -19,6 +22,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<()> {
+    locale::init_locale();
     let cli = Cli::parse();
     match cli.command {
         Commands::Generate(args) => {

@@ -1,0 +1,45 @@
+guide:
+  title: "SSH client setup guide (Cloudflare Tunnel / cloudflared)"
+  intro: |-
+    This guide covers the steps you do yourself after ssh-utils has
+    generated your keypair. ssh-utils only generates and places the
+    keys; it does not edit ~/.ssh/config or any other client config.
+    The config block in step 4 is added by hand.
+  step1_heading: "1. Prerequisites"
+  step1_install: "Install cloudflared on this machine:"
+  step1_confirm: |-
+    Confirm that the tunnel-side hostname you will connect to (for
+    example a host matching %{host}) is published in Cloudflare Zero
+    Trust as an SSH application / public hostname on a Cloudflare
+    Tunnel, and that your identity is allowed by its Access policy.
+  step2_heading: "2. Generate keys"
+  step2_run: "Run:"
+  step2_creates: "This creates:"
+  step2_private_note: "(permissions 600, directory permissions 700)"
+  step2_public_note: "(permissions 644)"
+  step2_note: |-
+    %{private_key} is your private key. Keep it secret and never copy
+    it to the server. %{public_key} is the public key you register in
+    the next step. Re-running generate will refuse to overwrite
+    existing files unless you pass --force.
+  step3_heading: "3. Register the public key on the server"
+  step3_intro: "Append %{name}.pub to ~/.ssh/authorized_keys on the target host. With ssh-copy-id:"
+  step3_or_manually: "Or manually, from this machine:"
+  step3_note: |-
+    Use the user and host that apply to the machine you are
+    registering the key on.
+  step4_heading: "4. Write the client config by hand"
+  step4_intro: "Create or edit ~/.ssh/config yourself and add this block:"
+  step4_note: |-
+    Replace the Host pattern, IdentityFile path, and user with your
+    own values if they differ from the ones shown here. Make sure
+    the file permissions are restrictive:
+  step5_heading: "5. Connect and verify"
+  step5_connect: "Connect with:"
+  step5_connect_note: "where <host> matches %{host}, for example the published tunnel hostname. For debugging, use verbose output:"
+  step5_fingerprint: "Check the fingerprint of the generated public key with:"
+  step5_fingerprint_note: "and compare it with the fingerprint ssh-utils printed when the key was generated."
+  step6_heading: "6. Troubleshooting"
+  step6_permission_intro: 'Permission errors from ssh (key ignored or "permissions are too open"): fix the private key permissions:'
+  step6_access: "A browser window or `cloudflared access login` prompt when you connect is expected: Cloudflare Access authenticates you in the browser before the SSH session starts. Complete that login with an identity allowed by the Access policy."
+  step6_proxy: '"ProxyCommand: cloudflared: No such file or directory" or "executable file not found": cloudflared is not installed or is not on your PATH. Reinstall it using the link in step 1 and open a new shell so PATH is refreshed.'
