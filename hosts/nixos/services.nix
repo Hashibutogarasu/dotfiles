@@ -4,9 +4,14 @@
   services.openssh = {
     enable = true;
     openFirewall = true;
+    authorizedKeysFiles = [
+      ".ssh/authorized_keys"
+      ".ssh/generated/system_key.pub"
+    ];
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
+      AuthenticationMethods = "publickey";
       PermitRootLogin = "no";
       AllowUsers = [ "crow" ];
       MaxAuthTries = 3;
@@ -30,6 +35,7 @@
   environment.systemPackages = [
     pkgs.pkg-config
     pkgs.flatpak
+    pkgs.cloudflared
   ];
   environment.variables.PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
   services.flatpak.enable = true;
