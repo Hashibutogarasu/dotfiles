@@ -23,6 +23,8 @@
       };
     in
     {
+      homeModules.claude = ./home/claude.nix;
+
       packages.${system}.ssh-utils =
         nixpkgs.legacyPackages.${system}.callPackage ./ssh/utils/package.nix { };
 

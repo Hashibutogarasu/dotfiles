@@ -172,13 +172,18 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
-fn gh_credential_helper(gh_config_dir: Option<&Path>, reset: bool) -> String {
+fn gh_credential_helper(gh_config_dir: Option<&Path>, reset: bool, use_1password: bool) -> String {
+    let gh = if use_1password {
+        "op plugin run -- gh auth git-credential"
+    } else {
+        "gh auth git-credential"
+    };
     let command = match gh_config_dir {
         Some(dir) => format!(
-            "!GH_CONFIG_DIR={} gh auth git-credential",
+            "!GH_CONFIG_DIR={} {gh}",
             shell_quote(&dir.display().to_string())
         ),
-        None => "!gh auth git-credential".to_owned(),
+        None => format!("!{gh}"),
     };
     let mut section = String::from("[credential \"https://github.com\"]\n");
     if reset {
@@ -267,8 +272,8 @@ pub fn render(
     let use_op_ssh_sign = input.use_1password;
 
     let mut main = to_toml(&MainConfig::new(input, home, op_ssh_sign, use_op_ssh_sign))?;
-    if input.use_gh || input.user.use_gh {
-        main.push_str(&gh_credential_helper(None, false));
+    if use_op_ssh_sign || input.use_gh || input.user.use_gh {
+        main.push_str(&gh_credential_helper(None, false, use_op_ssh_sign));
     }
     let mut directories = Vec::with_capacity(input.directories.len());
     let mut ssh = String::new();
@@ -280,7 +285,7 @@ pub fn render(
         let mut content = to_toml(&DirectoryConfig::new(dir, home))?;
         if dir.use_gh || dir.user.use_gh {
             let gh_dir = Path::new(&gitdir).join(".gh");
-            content.push_str(&gh_credential_helper(Some(&gh_dir), true));
+            content.push_str(&gh_credential_helper(Some(&gh_dir), true, use_op_ssh_sign));
             gh_dirs.push(gh_dir);
         }
         directories.push((path, content));

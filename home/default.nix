@@ -7,7 +7,6 @@
 
   imports = [
     ./applications.nix
-    ./claude.nix
     ./cli.nix
     ./develop.nix
     ./git
@@ -16,6 +15,23 @@
   ];
 
   programs.home-manager.enable = true;
+
+  programs.bash = {
+    enable = true;
+    initExtra = ''
+      export PATH="$HOME/.local/bin:$PATH"
+
+      export PNPM_HOME="$HOME/.local/share/pnpm"
+      case ":$PATH:" in
+        ":$PNPM_HOME/bin:"*) ;;
+        *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+      esac
+
+      export NVM_DIR="$HOME/.nvm"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    '';
+  };
 
   programs.direnv = {
     enable = true;

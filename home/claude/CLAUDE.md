@@ -15,3 +15,5 @@
 - Report only what was done. Do not volunteer what was not done (such as not committed or not pushed) or what the user needs to do next (such as running a command to apply the change).
 - Report only what was changed. Do not mention whether the change was launched, run, compiled, or otherwise verified.
 - Do not include personal names, account names, or usernames from the user's configuration in suggestions or recommendations. Refer to them generically (e.g., "the other account").
+- Do not revert formatter results on your own. Keep the formatted output, including changes to files you did not edit.
+- Do not add a prefix such as fix: or feat: to pull request titles. It duplicates the commit messages and is redundant.

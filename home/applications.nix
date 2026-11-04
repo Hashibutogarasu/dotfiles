@@ -1,6 +1,8 @@
 { config, pkgs, ... }:
 
 {
+  imports = [ ./claude.nix ];
+
   home.packages = with pkgs; [
     zed-editor
     godot
@@ -9,7 +11,6 @@
     android-studio
     vlc
     piper
-    _1password-cli
     _1password-gui
     google-chrome
   ];
