@@ -10,7 +10,7 @@
     ./cli.nix
     ./develop.nix
     ./git
-    ./nvim
+    ./nixvim
     ./ssh.nix
   ];
 
