@@ -17,6 +17,11 @@ let
       IdentityAgent /run/user/%i/gnupg/S.gpg-agent.ssh
       IdentitiesOnly yes
   '';
+  sshKeygen = pkgs.writeShellScript "git-ssh-keygen" ''
+    SSH_AUTH_SOCK=$(${config.programs.gpg.package}/bin/gpgconf --list-dirs agent-ssh-socket)
+    export SSH_AUTH_SOCK
+    exec ${pkgs.openssh}/bin/ssh-keygen "$@"
+  '';
   gitParser = pkgs.rustPlatform.buildRustPackage {
     pname = "GitParser";
     version = "0.1.0";
@@ -29,7 +34,10 @@ in
   programs.git = {
     enable = true;
 
-    settings.core.askPass = "";
+    settings = {
+      core.askPass = "";
+      gpg.ssh.program = "${sshKeygen}";
+    };
 
     includes = [
       {
