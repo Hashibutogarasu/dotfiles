@@ -16,6 +16,7 @@
 
   services.displayManager.cosmic-greeter.enable = true;
   services.desktopManager.cosmic.enable = true;
+  services.gnome.gcr-ssh-agent.enable = false;
 
   i18n.inputMethod = {
     type = "fcitx5";

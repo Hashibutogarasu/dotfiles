@@ -11,7 +11,7 @@ struct Cli {
     json: PathBuf,
     main_conf: PathBuf,
     local_dir: PathBuf,
-    ssh_conf: PathBuf,
+    ssh_config: String,
 }
 
 fn load(json_path: &Path) -> Result<GitInput, Box<dyn std::error::Error>> {
@@ -43,11 +43,11 @@ fn run(
     json_path: &Path,
     main_path: &Path,
     local_dir: &Path,
-    ssh_path: &Path,
+    ssh_config: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let home = env::var("HOME")?;
     let input = load(json_path)?;
-    let rendered = GitConfig::render(&input, &home, local_dir)?;
+    let rendered = GitConfig::render(&input, &home, local_dir, ssh_config)?;
 
     if let Some(parent) = main_path.parent() {
         fs::create_dir_all(parent)?;
@@ -61,11 +61,10 @@ fn run(
         fs::write(path, content)?;
     }
     fs::write(main_path, rendered.main)?;
-    fs::write(ssh_path, rendered.ssh)?;
     Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    run(&cli.json, &cli.main_conf, &cli.local_dir, &cli.ssh_conf)
+    run(&cli.json, &cli.main_conf, &cli.local_dir, &cli.ssh_config)
 }

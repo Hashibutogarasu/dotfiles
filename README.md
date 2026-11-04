@@ -61,8 +61,9 @@ SSH keys listed in `config/1Password.json` are exported from 1Password on every
 switch: the public key is written to the `.pub` path and the private key is
 imported into gpg-agent without being written to `~/.ssh`.
 
-Every rebuild/switch runs GitParser, which regenerates `~/.config/git/local.conf`,
-`local.d/*` and `ssh.conf`, and appends an `Include` to `~/.ssh/config`.
+Every rebuild/switch runs GitParser, which regenerates `~/.config/git/local.conf`
+and `local.d/*`. Every `core.sshCommand` passes `-F` with an SSH config in the
+Nix store, so git never reads `~/.ssh/config`.
 If the file is missing, only the signing configuration is skipped — the switch
 itself still succeeds.
 
