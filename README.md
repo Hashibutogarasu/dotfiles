@@ -52,8 +52,14 @@ Place the template and edit it:
 cp ~/dotfiles/home/git/git.example.json ~/.config/git/git.json
 ```
 
-Entries: `use1Password` (SSH signing via 1Password), `user` (global name, email
-and `signingKey`), `directories` (per-directory user switching and SSH settings).
+Entries: `use1Password` (SSH commit signing and the `gh` credential helper via
+the 1Password CLI plugin), `user` (global name, email and `signingKey`, a `.pub`
+path whose private key is held by gpg-agent), `directories` (per-directory user
+switching and SSH settings).
+
+SSH keys listed in `config/1Password.json` are exported from 1Password on every
+switch: the public key is written to the `.pub` path and the private key is
+imported into gpg-agent without being written to `~/.ssh`.
 
 Every rebuild/switch runs GitParser, which regenerates `~/.config/git/local.conf`,
 `local.d/*` and `ssh.conf`, and appends an `Include` to `~/.ssh/config`.

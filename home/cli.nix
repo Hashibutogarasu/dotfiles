@@ -18,9 +18,16 @@ in
     just
     screenfetch
     unzip
-    gnupg
     usbutils
     lm_sensors
     nvtopPackages.nvidia
   ];
+
+  programs.gpg.enable = true;
+
+  services.gpg-agent = {
+    enable = true;
+    enableSshSupport = true;
+    pinentry.package = pkgs.pinentry-gnome3;
+  };
 }

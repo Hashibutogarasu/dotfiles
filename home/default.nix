@@ -11,6 +11,7 @@
     ./develop.nix
     ./git
     ./nixvim
+    ./onepassword.nix
     ./ssh.nix
   ];
 

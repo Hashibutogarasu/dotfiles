@@ -4,3 +4,4 @@ home/git/git.json
 /result-*
 /.direnv
 target/
+/config/1Password.json

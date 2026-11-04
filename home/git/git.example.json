@@ -13,7 +13,7 @@
         "email": "work@example.com",
         "signingKey": "~/.ssh/id_work_ed25519.pub"
       },
-      "sshCommand": "ssh -i ~/.ssh/id_work_ed25519 -o IdentitiesOnly=yes"
+      "sshCommand": "ssh -i ~/.ssh/id_work_ed25519.pub -o IdentitiesOnly=yes"
     }
   ]
 }
