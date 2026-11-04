@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, nixvim, ... }:
 
 {
   programs.java = {
@@ -6,5 +6,8 @@
     package = pkgs.openjdk25;
   };
 
-  environment.systemPackages = [ pkgs.gcc ];
+  environment.systemPackages = [
+    pkgs.gcc
+    (nixvim.legacyPackages.${pkgs.stdenv.hostPlatform.system}.makeNixvim (import ../../home/nixvim/settings.nix))
+  ];
 }
