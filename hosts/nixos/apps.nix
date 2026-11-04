@@ -1,6 +1,12 @@
-{ config, pkgs, ... }:
+{ config, pkgs, users, ... }:
 
 {
+  programs._1password.enable = true;
+  programs._1password-gui = {
+    enable = true;
+    polkitPolicyOwners = [ users.crow.name ];
+  };
+
   programs.coolercontrol.enable = true;
   programs.steam.enable = true;
 

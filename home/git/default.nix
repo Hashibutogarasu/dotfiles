@@ -22,11 +22,10 @@ let
   };
 in
 {
-  home.packages = [ pkgs._1password-cli ];
-
   programs.git = {
     enable = true;
 
+    settings.core.askPass = "";
     settings.gpg.ssh.program = lib.mkDefault opSshSign;
 
     includes = [

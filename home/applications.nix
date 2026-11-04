@@ -11,7 +11,6 @@
     android-studio
     vlc
     piper
-    _1password-cli
     _1password-gui
     google-chrome
   ];
