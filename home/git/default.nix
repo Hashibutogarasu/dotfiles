@@ -12,7 +12,6 @@ let
   localDir = "${home}/.config/git/local.d";
   sshConfig = "${home}/.config/git/ssh.conf";
   userSshConfig = "${home}/.ssh/config";
-  opSshSign = "${config.home.profileDirectory}/bin/op-ssh-sign";
   gitParser = pkgs.rustPlatform.buildRustPackage {
     pname = "GitParser";
     version = "0.1.0";
@@ -26,7 +25,6 @@ in
     enable = true;
 
     settings.core.askPass = "";
-    settings.gpg.ssh.program = lib.mkDefault opSshSign;
 
     includes = [
       {
@@ -36,7 +34,7 @@ in
   };
 
   home.activation.gitLocalConfig = lib.hm.dag.entryAfter [ "writeBoundary" "rustupInit" ] ''
-    ${gitParser}/bin/GitParser ${lib.escapeShellArgs [ jsonPath localConfig localDir opSshSign sshConfig ]}
+    ${gitParser}/bin/GitParser ${lib.escapeShellArgs [ jsonPath localConfig localDir sshConfig ]}
 
     if ! grep -qsF ${lib.escapeShellArg "Include ${sshConfig}"} ${lib.escapeShellArg userSshConfig}; then
       mkdir -p "$(dirname ${lib.escapeShellArg userSshConfig})"

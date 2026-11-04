@@ -85,14 +85,8 @@ struct CommitSection {
 }
 
 #[derive(Serialize, Default)]
-struct GpgSshSection {
-    program: Option<String>,
-}
-
-#[derive(Serialize, Default)]
 struct GpgSection {
     format: Option<String>,
-    ssh: GpgSshSection,
 }
 
 #[derive(Serialize, Default)]
@@ -234,18 +228,15 @@ impl UserSection {
 }
 
 impl MainConfig {
-    fn new(input: &GitInput, home: &str, op_ssh_sign: &str, use_op_ssh_sign: bool) -> Self {
+    fn new(input: &GitInput, home: &str) -> Self {
         Self {
             user: UserSection::from_input(&input.user, home),
             commit: CommitSection {
-                gpgsign: input.signing.commit.or(use_op_ssh_sign.then_some(true)),
+                gpgsign: input.signing.commit.or(input.use_1password.then_some(true)),
             },
             gpg: GpgSection {
                 format: non_empty(&input.signing.format)
-                    .or_else(|| use_op_ssh_sign.then(|| "ssh".to_owned())),
-                ssh: GpgSshSection {
-                    program: use_op_ssh_sign.then(|| op_ssh_sign.to_owned()),
-                },
+                    .or_else(|| input.use_1password.then(|| "ssh".to_owned())),
             },
         }
     }
@@ -266,14 +257,13 @@ pub fn render(
     input: &GitInput,
     home: &str,
     local_dir: &Path,
-    op_ssh_sign: &str,
 ) -> Result<RenderedConfig, Box<dyn Error>> {
     input.validate()?;
-    let use_op_ssh_sign = input.use_1password;
+    let use_1password = input.use_1password;
 
-    let mut main = to_toml(&MainConfig::new(input, home, op_ssh_sign, use_op_ssh_sign))?;
-    if use_op_ssh_sign || input.use_gh || input.user.use_gh {
-        main.push_str(&gh_credential_helper(None, false, use_op_ssh_sign));
+    let mut main = to_toml(&MainConfig::new(input, home))?;
+    if use_1password || input.use_gh || input.user.use_gh {
+        main.push_str(&gh_credential_helper(None, false, use_1password));
     }
     let mut directories = Vec::with_capacity(input.directories.len());
     let mut ssh = String::new();
@@ -285,7 +275,7 @@ pub fn render(
         let mut content = to_toml(&DirectoryConfig::new(dir, home))?;
         if dir.use_gh || dir.user.use_gh {
             let gh_dir = Path::new(&gitdir).join(".gh");
-            content.push_str(&gh_credential_helper(Some(&gh_dir), true, use_op_ssh_sign));
+            content.push_str(&gh_credential_helper(Some(&gh_dir), true, use_1password));
             gh_dirs.push(gh_dir);
         }
         directories.push((path, content));
