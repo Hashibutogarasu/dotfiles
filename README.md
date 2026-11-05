@@ -81,6 +81,12 @@ This applies the system and the `crow` Home Manager environment at once.
 home-manager switch --flake ~/dotfiles#crow
 ```
 
+To apply it with `sudo`:
+
+```sh
+sudo home-manager switch --flake ~/dotfiles#crow
+```
+
 The standalone configuration links `~/.config/home-manager` to `~/dotfiles`, so
 after the first switch a bare `home-manager switch` uses this flake by default.
 
