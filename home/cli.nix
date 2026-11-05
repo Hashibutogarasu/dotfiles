@@ -30,4 +30,6 @@ in
     enableSshSupport = true;
     pinentry.package = pkgs.pinentry-gnome3;
   };
+
+  systemd.user.sessionVariables.SSH_AUTH_SOCK = "\${XDG_RUNTIME_DIR}/gnupg/S.gpg-agent.ssh";
 }
