@@ -8,6 +8,8 @@
 
   environment.systemPackages = [
     pkgs.gcc
-    (nixvim.legacyPackages.${pkgs.stdenv.hostPlatform.system}.makeNixvim (import ../../home/nixvim/settings.nix))
+    (nixvim.legacyPackages.${pkgs.stdenv.hostPlatform.system}.makeNixvim ((import ../../home/nixvim/settings.nix) // {
+      nixpkgs.source = pkgs.path;
+    }))
   ];
 }

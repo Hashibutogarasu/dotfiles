@@ -29,5 +29,6 @@
     coolercontrol.coolercontrold
     openssl
     nh
+    home-manager
   ];
 }

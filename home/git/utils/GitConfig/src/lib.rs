@@ -52,7 +52,6 @@ pub struct GitInput {
 pub struct RenderedConfig {
     pub main: String,
     pub directories: Vec<(PathBuf, String)>,
-    pub ssh: String,
     pub gh_dirs: Vec<PathBuf>,
 }
 
@@ -98,6 +97,7 @@ struct CoreSection {
 #[derive(Serialize)]
 struct MainConfig {
     user: UserSection,
+    core: CoreSection,
     commit: CommitSection,
     gpg: GpgSection,
 }
@@ -166,12 +166,8 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
-fn gh_credential_helper(gh_config_dir: Option<&Path>, reset: bool, use_1password: bool) -> String {
-    let gh = if use_1password {
-        "op plugin run -- gh auth git-credential"
-    } else {
-        "gh auth git-credential"
-    };
+fn gh_credential_helper(gh_config_dir: Option<&Path>, reset: bool) -> String {
+    let gh = "gh auth git-credential";
     let command = match gh_config_dir {
         Some(dir) => format!(
             "!GH_CONFIG_DIR={} {gh}",
@@ -193,24 +189,30 @@ fn expand_leading_tilde(value: &str, home: &str) -> String {
         .map_or_else(|| value.to_owned(), |rest| format!("{home}{rest}"))
 }
 
-fn ssh_match_block(gitdir: &str, ssh_command: &str) -> String {
-    let mut options = Vec::new();
-    let mut tokens = ssh_command.split_whitespace().skip(1);
-    while let Some(token) = tokens.next() {
-        match (token, tokens.next()) {
-            ("-i", Some(file)) => options.push(format!("IdentityFile {file}")),
-            ("-o", Some(opt)) => options.push(opt.replacen('=', " ", 1)),
-            _ => {}
+fn is_literal_key(key: &str) -> bool {
+    key.starts_with("ssh-") || key.starts_with("key::")
+}
+
+fn ssh_command(
+    command: Option<String>,
+    user: &UserInput,
+    home: &str,
+    ssh_config: &str,
+) -> String {
+    let ssh = format!("ssh -F {}", shell_quote(ssh_config));
+    match command {
+        Some(command) => {
+            let command = command.replace('~', home);
+            match command.strip_prefix("ssh") {
+                Some(args) if args.is_empty() || args.starts_with(' ') => format!("{ssh}{args}"),
+                _ => command,
+            }
         }
+        None => match non_empty(&user.signing_key).filter(|key| !is_literal_key(key)) {
+            Some(key) => format!("{ssh} -i {}", shell_quote(&expand_leading_tilde(&key, home))),
+            None => ssh,
+        },
     }
-    let dir = gitdir.trim_end_matches('/');
-    let mut block = format!(
-        "Match host github.com exec \"case \\\"$PWD/\\\" in {dir}/*) exit 0;; *) exit 1;; esac\"\n"
-    );
-    for option in options {
-        block.push_str(&format!("\t{option}\n"));
-    }
-    block
 }
 
 fn directory_conf_path(local_dir: &Path, index: usize) -> PathBuf {
@@ -228,9 +230,12 @@ impl UserSection {
 }
 
 impl MainConfig {
-    fn new(input: &GitInput, home: &str) -> Self {
+    fn new(input: &GitInput, home: &str, ssh_config: &str) -> Self {
         Self {
             user: UserSection::from_input(&input.user, home),
+            core: CoreSection {
+                ssh_command: Some(ssh_command(None, &input.user, home, ssh_config)),
+            },
             commit: CommitSection {
                 gpgsign: input.signing.commit.or(input.use_1password.then_some(true)),
             },
@@ -243,11 +248,16 @@ impl MainConfig {
 }
 
 impl DirectoryConfig {
-    fn new(dir: &DirectoryInput, home: &str) -> Self {
+    fn new(dir: &DirectoryInput, home: &str, ssh_config: &str) -> Self {
         Self {
             user: UserSection::from_input(&dir.user, home),
             core: CoreSection {
-                ssh_command: non_empty(&dir.ssh_command).map(|c| c.replace('~', home)),
+                ssh_command: Some(ssh_command(
+                    non_empty(&dir.ssh_command),
+                    &dir.user,
+                    home,
+                    ssh_config,
+                )),
             },
         }
     }
@@ -257,31 +267,27 @@ pub fn render(
     input: &GitInput,
     home: &str,
     local_dir: &Path,
+    ssh_config: &str,
 ) -> Result<RenderedConfig, Box<dyn Error>> {
     input.validate()?;
-    let use_1password = input.use_1password;
 
-    let mut main = to_toml(&MainConfig::new(input, home))?;
-    if use_1password || input.use_gh || input.user.use_gh {
-        main.push_str(&gh_credential_helper(None, false, use_1password));
+    let mut main = to_toml(&MainConfig::new(input, home, ssh_config))?;
+    if input.use_gh || input.user.use_gh {
+        main.push_str(&gh_credential_helper(None, false));
     }
     let mut directories = Vec::with_capacity(input.directories.len());
-    let mut ssh = String::new();
     let mut gh_dirs = Vec::new();
     for (i, dir) in input.directories.iter().enumerate() {
         let path = directory_conf_path(local_dir, i);
         let gitdir = expand_leading_tilde(&dir.path, home);
         main.push_str(&include_if(&gitdir, &path));
-        let mut content = to_toml(&DirectoryConfig::new(dir, home))?;
+        let mut content = to_toml(&DirectoryConfig::new(dir, home, ssh_config))?;
         if dir.use_gh || dir.user.use_gh {
             let gh_dir = Path::new(&gitdir).join(".gh");
-            content.push_str(&gh_credential_helper(Some(&gh_dir), true, use_1password));
+            content.push_str(&gh_credential_helper(Some(&gh_dir), true));
             gh_dirs.push(gh_dir);
         }
         directories.push((path, content));
-        if let Some(command) = non_empty(&dir.ssh_command) {
-            ssh.push_str(&ssh_match_block(&gitdir, &command.replace('~', home)));
-        }
     }
-    Ok(RenderedConfig { main, directories, ssh, gh_dirs })
+    Ok(RenderedConfig { main, directories, gh_dirs })
 }
