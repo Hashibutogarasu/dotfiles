@@ -1,4 +1,9 @@
-{ config, lib, modulesPath, ... }:
+{
+  config,
+  lib,
+  modulesPath,
+  ...
+}:
 
 {
   imports = [
@@ -6,7 +11,12 @@
   ];
 
   boot.initrd.availableKernelModules = [
-    "xhci_pci" "ahci" "nvme" "usbhid" "usb_storage" "sd_mod"
+    "xhci_pci"
+    "ahci"
+    "nvme"
+    "usbhid"
+    "usb_storage"
+    "sd_mod"
   ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-intel" ];
@@ -20,7 +30,10 @@
   fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/48BA-D1E8";
     fsType = "vfat";
-    options = [ "fmask=0077" "dmask=0077" ];
+    options = [
+      "fmask=0077"
+      "dmask=0077"
+    ];
   };
 
   swapDevices = [ ];

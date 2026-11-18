@@ -7,7 +7,7 @@
 
 let
   home = config.home.homeDirectory;
-  jsonPath = "${home}/.config/git/git.json";
+  jsonPath = "${home}/dotfiles/config/git.json";
   localConfig = "${home}/.config/git/local.conf";
   localDir = "${home}/.config/git/local.d";
   sshConfig = pkgs.writeText "git-ssh-config" ''
@@ -31,6 +31,8 @@ let
   };
 in
 {
+  _module.args.gitParser = gitParser;
+
   programs.git = {
     enable = true;
 
@@ -47,6 +49,6 @@ in
   };
 
   home.activation.gitLocalConfig = lib.hm.dag.entryAfter [ "writeBoundary" "rustupInit" ] ''
-    ${gitParser}/bin/GitParser ${lib.escapeShellArgs [ jsonPath localConfig localDir "${sshConfig}" ]}
+    ${gitParser}/bin/GitParser git ${lib.escapeShellArgs [ jsonPath localConfig localDir "${sshConfig}" ]}
   '';
 }

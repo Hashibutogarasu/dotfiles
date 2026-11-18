@@ -1,0 +1,27 @@
+{
+  "useGh": true,
+  "signing": {
+    "commit": true,
+    "format": "ssh"
+  },
+  "defaultUser": "your-name",
+  "user": {
+    "your-name": {
+      "name": "Your Name",
+      "email": "you@example.com",
+      "signingKey": "ssh-ed25519 AAAA..."
+    },
+    "work-name": {
+      "name": "Work Name",
+      "email": "work@example.com",
+      "signingKey": "ssh-ed25519 AAAA...",
+      "sshCommandArgs": ["-o", "ServerAliveInterval=60"]
+    }
+  },
+  "directories": [
+    {
+      "path": "~/sources/example",
+      "user": "work-name"
+    }
+  ]
+}

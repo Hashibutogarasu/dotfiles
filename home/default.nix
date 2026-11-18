@@ -10,6 +10,7 @@
     ./cli.nix
     ./develop.nix
     ./git
+    ./home-manager.nix
     ./nixvim
     ./onepassword.nix
     ./ssh.nix

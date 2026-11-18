@@ -45,27 +45,39 @@ git clone git@github.com:Hashibutogarasu/nix-home.git ~/dotfiles
 
 ### 2. Prepare the git signing configuration
 
-`git.json` contains personal information and is excluded from the repository.
-Place the template and edit it:
+`config/git.json` contains personal information and is excluded from the repository.
+Copy `config/git.example.json` to `config/git.json` and edit it. A switch fails
+with an error if the file is missing or invalid.
 
-```sh
-cp ~/dotfiles/home/git/git.example.json ~/.config/git/git.json
-```
+Entries: `useGh` (the `gh` credential helper), `signing` (`commit` enables
+commit signing, `format` selects the signature format), `user` (accounts keyed
+by an identifier that must not contain whitespace, each with `name` — the git
+user name — `email`, `signingKey` — a key ID, or an SSH public key such as
+`ssh-ed25519 AAAA...` that is passed to git as `key::<key>` — `sshCommandArgs`
+— an array of extra `ssh` arguments — and `useGh`), `defaultUser` (the account
+used globally; none is applied if omitted), `directories` (per-directory `user`,
+naming an account from `user`). Referencing an undefined account is an error.
 
-Entries: `use1Password` (SSH commit signing and the `gh` credential helper via
-the 1Password CLI plugin), `user` (global name, email and `signingKey`, a `.pub`
-path whose private key is held by gpg-agent), `directories` (per-directory user
-switching and SSH settings).
+`core.sshCommand` is generated from the account's `signingKey`: for an SSH public
+key it is written to `~/.config/git/local.d/<user>.pub` and passed as
+`-i <file> -o IdentitiesOnly=yes`, followed by `sshCommandArgs`.
 
-SSH keys listed in `config/1Password.json` are exported from 1Password on every
-switch: the public key is written to the `.pub` path and the private key is
-imported into gpg-agent without being written to `~/.ssh`.
+Keys listed in `config/1Password.json` are imported on every switch. `keyId` is
+either a GPG key ID or an SSH public key such as `ssh-ed25519 AAAA...`.
+
+- GPG key ID: the 1Password item titled with that ID is used and its `private key`
+  field is piped into `gpg --import`, replacing any existing key with the same ID.
+  An optional `reference` (`op://...`) overrides the item lookup.
+- SSH public key: the 1Password SSH Key item with that public key is found and its
+  private key is piped into `ssh-add`, which hands it to gpg-agent.
+
+The private key is never written to a file.
 
 Every rebuild/switch runs GitParser, which regenerates `~/.config/git/local.conf`
 and `local.d/*`. Every `core.sshCommand` passes `-F` with an SSH config in the
 Nix store, so git never reads `~/.ssh/config`.
-If the file is missing, only the signing configuration is skipped — the switch
-itself still succeeds.
+If the file is missing, GitParser exits with an error and no default values are
+applied.
 
 ### 3. Apply the system and home environment
 
@@ -109,7 +121,7 @@ sudo nixos-rebuild switch --flake ~/dotfiles#nixos
 Preview changes with `sudo nixos-rebuild dry-run --flake ~/dotfiles#nixos`.
 
 To only change `git.json` (signing / account switching), edit
-`~/.config/git/git.json` and run a switch — GitParser regenerates the affected
+`~/dotfiles/config/git.json` and run a switch — GitParser regenerates the affected
 config files.
 
 If something breaks, select the previous generation from the systemd-boot menu
@@ -119,6 +131,6 @@ or run `sudo nixos-rebuild switch --rollback`.
 
 ## Secrets
 
-`home/git/git.json` is excluded via `.gitignore`; only `git.example.json` is
-tracked in the repository. The live file lives outside the repository at
-`~/.config/git/git.json`.
+`config/git.json` is excluded via `.gitignore`; only `config/git.example.json` is
+tracked in the repository. `user.name` and `user.email` set the global identity,
+and each `directories[].user` overrides them for repositories under that path.

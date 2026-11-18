@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     error::Error,
-    fmt,
     path::{Path, PathBuf},
 };
 
@@ -13,6 +13,8 @@ pub struct UserInput {
     pub name: Option<String>,
     pub email: Option<String>,
     pub signing_key: Option<String>,
+    #[serde(default)]
+    pub ssh_command_args: Vec<String>,
     #[serde(default)]
     pub use_gh: bool,
 }
@@ -28,21 +30,19 @@ pub struct SigningInput {
 #[serde(rename_all = "camelCase")]
 pub struct DirectoryInput {
     pub path: String,
-    #[serde(default)]
-    pub user: UserInput,
-    pub ssh_command: Option<String>,
+    pub user: Option<String>,
     #[serde(default)]
     pub use_gh: bool,
 }
 
 #[derive(Deserialize, Default)]
 pub struct GitInput {
-    #[serde(default, rename = "use1Password")]
-    pub use_1password: bool,
     #[serde(default, rename = "useGh")]
     pub use_gh: bool,
+    #[serde(default, rename = "defaultUser")]
+    pub default_user: Option<String>,
     #[serde(default)]
-    pub user: UserInput,
+    pub user: BTreeMap<String, UserInput>,
     #[serde(default)]
     pub signing: SigningInput,
     #[serde(default)]
@@ -53,22 +53,8 @@ pub struct RenderedConfig {
     pub main: String,
     pub directories: Vec<(PathBuf, String)>,
     pub gh_dirs: Vec<PathBuf>,
+    pub key_files: Vec<(PathBuf, String)>,
 }
-
-#[derive(Debug)]
-pub struct MissingUserError(Vec<&'static str>);
-
-impl fmt::Display for MissingUserError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "use1Password is enabled but user.{} is missing",
-            self.0.join(", user.")
-        )
-    }
-}
-
-impl Error for MissingUserError {}
 
 #[derive(Serialize, Default)]
 struct UserSection {
@@ -106,28 +92,7 @@ struct MainConfig {
 struct DirectoryConfig {
     user: UserSection,
     core: CoreSection,
-}
-
-impl GitInput {
-    fn validate(&self) -> Result<(), MissingUserError> {
-        if !self.use_1password {
-            return Ok(());
-        }
-        let missing: Vec<&'static str> = [
-            ("name", &self.user.name),
-            ("email", &self.user.email),
-            ("signingKey", &self.user.signing_key),
-        ]
-        .into_iter()
-        .filter(|(_, value)| value.as_deref().is_none_or(str::is_empty))
-        .map(|(key, _)| key)
-        .collect();
-        if missing.is_empty() {
-            Ok(())
-        } else {
-            Err(MissingUserError(missing))
-        }
-    }
+    gpg: GpgSection,
 }
 
 fn non_empty(value: &Option<String>) -> Option<String> {
@@ -149,7 +114,6 @@ fn to_toml<T: Serialize>(config: &T) -> Result<String, Box<dyn Error>> {
     Ok(toml::to_string(&table)?)
 }
 
-// includeIf takes a quoted condition in its header, which TOML cannot express.
 fn include_if(gitdir: &str, path: &Path) -> String {
     format!(
         "[includeIf {}]\n\tpath = {}\n",
@@ -189,78 +153,106 @@ fn expand_leading_tilde(value: &str, home: &str) -> String {
         .map_or_else(|| value.to_owned(), |rest| format!("{home}{rest}"))
 }
 
-fn is_literal_key(key: &str) -> bool {
-    key.starts_with("ssh-") || key.starts_with("key::")
+fn is_ssh_key(key: &str) -> bool {
+    key.starts_with("ssh-")
+}
+
+fn key_file_path(local_dir: &Path, name: &str) -> PathBuf {
+    local_dir.join(format!("{name}.pub"))
 }
 
 fn ssh_command(
-    command: Option<String>,
-    user: &UserInput,
+    user: Option<(&str, &UserInput)>,
     home: &str,
     ssh_config: &str,
+    local_dir: &Path,
 ) -> String {
-    let ssh = format!("ssh -F {}", shell_quote(ssh_config));
-    match command {
-        Some(command) => {
-            let command = command.replace('~', home);
-            match command.strip_prefix("ssh") {
-                Some(args) if args.is_empty() || args.starts_with(' ') => format!("{ssh}{args}"),
-                _ => command,
-            }
+    let mut command = format!("ssh -F {}", shell_quote(ssh_config));
+    if let Some((name, user)) = user {
+        if non_empty(&user.signing_key).is_some_and(|key| is_ssh_key(&key)) {
+            let key_file = key_file_path(local_dir, name).display().to_string();
+            command.push_str(&format!(
+                " -i {} -o IdentitiesOnly=yes",
+                shell_quote(&key_file)
+            ));
         }
-        None => match non_empty(&user.signing_key).filter(|key| !is_literal_key(key)) {
-            Some(key) => format!("{ssh} -i {}", shell_quote(&expand_leading_tilde(&key, home))),
-            None => ssh,
-        },
+        for arg in &user.ssh_command_args {
+            command.push(' ');
+            command.push_str(&shell_quote(&expand_leading_tilde(arg, home)));
+        }
     }
+    command
 }
 
 fn directory_conf_path(local_dir: &Path, index: usize) -> PathBuf {
     local_dir.join(format!("{index}.conf"))
 }
 
+impl GitInput {
+    fn lookup(&self, key: &str) -> Result<(&str, &UserInput), Box<dyn Error>> {
+        self.user
+            .get_key_value(key)
+            .map(|(name, user)| (name.as_str(), user))
+            .ok_or_else(|| format!("user \"{key}\" is not defined in \"user\"").into())
+    }
+}
+
 impl UserSection {
-    fn from_input(user: &UserInput, home: &str) -> Self {
+    fn from_input(user: &UserInput) -> Self {
         Self {
             name: non_empty(&user.name),
             email: non_empty(&user.email),
-            signing_key: non_empty(&user.signing_key).map(|key| expand_leading_tilde(&key, home)),
+            signing_key: non_empty(&user.signing_key).map(|key| {
+                if is_ssh_key(&key) {
+                    format!("key::{key}")
+                } else {
+                    key
+                }
+            }),
         }
     }
 }
 
 impl MainConfig {
-    fn new(input: &GitInput, home: &str, ssh_config: &str) -> Self {
+    fn new(
+        input: &GitInput,
+        user: Option<&UserInput>,
+        ssh_command: String,
+    ) -> Self {
         Self {
-            user: UserSection::from_input(&input.user, home),
+            user: user.map_or_else(UserSection::default, UserSection::from_input),
             core: CoreSection {
-                ssh_command: Some(ssh_command(None, &input.user, home, ssh_config)),
+                ssh_command: Some(ssh_command),
             },
             commit: CommitSection {
-                gpgsign: input.signing.commit.or(input.use_1password.then_some(true)),
+                gpgsign: input.signing.commit,
             },
             gpg: GpgSection {
-                format: non_empty(&input.signing.format)
-                    .or_else(|| input.use_1password.then(|| "ssh".to_owned())),
+                format: signing_format(user).or_else(|| non_empty(&input.signing.format)),
             },
         }
     }
 }
 
 impl DirectoryConfig {
-    fn new(dir: &DirectoryInput, home: &str, ssh_config: &str) -> Self {
+    fn new(user: Option<&UserInput>, ssh_command: String) -> Self {
         Self {
-            user: UserSection::from_input(&dir.user, home),
+            user: user.map_or_else(UserSection::default, UserSection::from_input),
             core: CoreSection {
-                ssh_command: Some(ssh_command(
-                    non_empty(&dir.ssh_command),
-                    &dir.user,
-                    home,
-                    ssh_config,
-                )),
+                ssh_command: Some(ssh_command),
+            },
+            gpg: GpgSection {
+                format: signing_format(user)
+                    .or_else(|| user.and_then(|u| non_empty(&u.signing_key)).map(|_| "openpgp".to_owned())),
             },
         }
     }
+}
+
+fn signing_format(user: Option<&UserInput>) -> Option<String> {
+    user.and_then(|u| non_empty(&u.signing_key))
+        .filter(|key| is_ssh_key(key))
+        .map(|_| "ssh".to_owned())
 }
 
 pub fn render(
@@ -269,10 +261,21 @@ pub fn render(
     local_dir: &Path,
     ssh_config: &str,
 ) -> Result<RenderedConfig, Box<dyn Error>> {
-    input.validate()?;
-
-    let mut main = to_toml(&MainConfig::new(input, home, ssh_config))?;
-    if input.use_gh || input.user.use_gh {
+    if let Some(name) = input.user.keys().find(|name| name.chars().any(char::is_whitespace)) {
+        return Err(format!("user name \"{name}\" must not contain whitespace").into());
+    }
+    let default_user = input
+        .default_user
+        .as_deref()
+        .map(|name| input.lookup(name))
+        .transpose()?;
+    let main_ssh = ssh_command(default_user, home, ssh_config, local_dir);
+    let mut main = to_toml(&MainConfig::new(
+        input,
+        default_user.map(|(_, user)| user),
+        main_ssh,
+    ))?;
+    if input.use_gh || default_user.is_some_and(|(_, user)| user.use_gh) {
         main.push_str(&gh_credential_helper(None, false));
     }
     let mut directories = Vec::with_capacity(input.directories.len());
@@ -281,13 +284,28 @@ pub fn render(
         let path = directory_conf_path(local_dir, i);
         let gitdir = expand_leading_tilde(&dir.path, home);
         main.push_str(&include_if(&gitdir, &path));
-        let mut content = to_toml(&DirectoryConfig::new(dir, home, ssh_config))?;
-        if dir.use_gh || dir.user.use_gh {
+        let user = dir
+            .user
+            .as_deref()
+            .map(|name| input.lookup(name))
+            .transpose()?;
+        let dir_ssh = ssh_command(user, home, ssh_config, local_dir);
+        let mut content = to_toml(&DirectoryConfig::new(user.map(|(_, user)| user), dir_ssh))?;
+        if dir.use_gh || user.is_some_and(|(_, user)| user.use_gh) {
             let gh_dir = Path::new(&gitdir).join(".gh");
             content.push_str(&gh_credential_helper(Some(&gh_dir), true));
             gh_dirs.push(gh_dir);
         }
         directories.push((path, content));
     }
-    Ok(RenderedConfig { main, directories, gh_dirs })
+    let key_files = input
+        .user
+        .iter()
+        .filter_map(|(name, user)| {
+            non_empty(&user.signing_key)
+                .filter(|key| is_ssh_key(key))
+                .map(|key| (key_file_path(local_dir, name), format!("{key}\n")))
+        })
+        .collect();
+    Ok(RenderedConfig { main, directories, gh_dirs, key_files })
 }
