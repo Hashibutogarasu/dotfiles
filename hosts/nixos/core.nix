@@ -1,4 +1,9 @@
-{ config, pkgs, users, ... }:
+{
+  config,
+  pkgs,
+  users,
+  ...
+}:
 
 {
   nixpkgs.config.allowUnfree = true;
@@ -27,10 +32,16 @@
   users.users.${users.crow.name} = {
     isNormalUser = true;
     description = users.crow.description;
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+    ];
   };
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   system.stateVersion = "26.05";
 }

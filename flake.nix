@@ -8,10 +8,25 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixvim.url = "github:nix-community/nixvim";
+    kwi = {
+      url = "github:KDE/kwi";
+      flake = false;
+    };
+    ghostty = {
+      url = "github:ghostty-org/ghostty";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { nixpkgs, home-manager, nixvim, ... }:
+    {
+      nixpkgs,
+      home-manager,
+      nixvim,
+      kwi,
+      ghostty,
+      ...
+    }:
     let
       system = "x86_64-linux";
 
@@ -27,11 +42,19 @@
       homeModules.claude = ./home/claude.nix;
 
       packages.${system}.ssh-utils =
-        nixpkgs.legacyPackages.${system}.callPackage ./ssh/utils/package.nix { };
+        nixpkgs.legacyPackages.${system}.callPackage ./ssh/utils/package.nix
+          { };
 
       nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit users nixvim; };
+        specialArgs = {
+          inherit
+            users
+            nixvim
+            kwi
+            ghostty
+            ;
+        };
         modules = [
           ./hosts/nixos
           home-manager.nixosModules.home-manager

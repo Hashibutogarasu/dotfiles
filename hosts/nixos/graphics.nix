@@ -4,7 +4,10 @@
   hardware.graphics.enable = true;
 
   services.xserver = {
-    videoDrivers = [ "modesetting" "nvidia" ];
+    videoDrivers = [
+      "modesetting"
+      "nvidia"
+    ];
     deviceSection = ''
       Option "Coolbits" "4"
     '';
@@ -35,22 +38,52 @@
           fanSpeedUpdateFrequency = 5;
           movingAverageInterval = 40;
           speedCurve = [
-            { temp = 45; speed = 0; }
-            { temp = 65; speed = 15; }
-            { temp = 70; speed = 25; }
-            { temp = 85; speed = 35; }
+            {
+              temp = 45;
+              speed = 0;
+            }
+            {
+              temp = 65;
+              speed = 15;
+            }
+            {
+              temp = 70;
+              speed = 25;
+            }
+            {
+              temp = 85;
+              speed = 35;
+            }
           ];
         };
         "lazy" = {
           fanSpeedUpdateFrequency = 5;
           movingAverageInterval = 30;
           speedCurve = [
-            { temp = 0; speed = 15; }
-            { temp = 50; speed = 15; }
-            { temp = 65; speed = 25; }
-            { temp = 70; speed = 35; }
-            { temp = 75; speed = 50; }
-            { temp = 85; speed = 100; }
+            {
+              temp = 0;
+              speed = 15;
+            }
+            {
+              temp = 50;
+              speed = 15;
+            }
+            {
+              temp = 65;
+              speed = 25;
+            }
+            {
+              temp = 70;
+              speed = 35;
+            }
+            {
+              temp = 75;
+              speed = 50;
+            }
+            {
+              temp = 85;
+              speed = 100;
+            }
           ];
         };
       };
