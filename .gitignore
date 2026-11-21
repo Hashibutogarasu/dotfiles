@@ -1,0 +1,6 @@
+/config/git.json
+/config/1Password.json
+/config/ssh.json
+/result
+/result-*
+target/
