@@ -5,3 +5,4 @@
 /.direnv
 target/
 /config/1Password.json
+/config/ssh.json

@@ -36,6 +36,8 @@ in
   environment.etc."xdg/kdeglobals".text = ''
     [General]
     ColorScheme=BreezeDark
+    TerminalApplication=kwi
+    TerminalService=org.kde.kwi.desktop
     fixed=JetBrains Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
     font=JetBrains Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
     menuFont=JetBrains Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1

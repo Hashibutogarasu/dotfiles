@@ -73,6 +73,13 @@ either a GPG key ID or an SSH public key such as `ssh-ed25519 AAAA...`.
 
 The private key is never written to a file.
 
+`config/ssh.json` defines the extra SSH hosts. Copy `config/ssh.example.json` to
+`config/ssh.json` and edit it. Every switch renders `hosts` into `~/.ssh/hosts.conf`,
+which `~/.ssh/config` includes. Each host takes `hostname`, `user`, `port`,
+`identityFile`, `identitiesOnly`, `identityAgent` and `proxyCommand`; any other key is
+an error. A switch fails if the file is missing. To use a key stored in 1Password, add
+its public key to `config/1Password.json` so it is loaded into gpg-agent on every switch.
+
 Every rebuild/switch runs GitParser, which regenerates `~/.config/git/local.conf`
 and `local.d/*`. Every `core.sshCommand` passes `-F` with an SSH config in the
 Nix store, so git never reads `~/.ssh/config`.
