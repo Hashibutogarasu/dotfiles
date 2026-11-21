@@ -15,6 +15,8 @@
     unityhub
     vscode
     yt-dlp
+    rpi-imager
+    cf
   ];
 
   programs.firefox.enable = true;
